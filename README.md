@@ -80,6 +80,9 @@ python -m pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+When the current directory is `backend`, `uvicorn main:app --reload` is also
+supported through the compatibility entry point in `backend/main.py`.
+
 ### Frontend
 ```bash
 cd frontend
