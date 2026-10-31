@@ -1,4 +1,23 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { clearToken, getStoredToken } from "../../lib/auth";
+
 export default function DashboardPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!getStoredToken()) {
+      router.replace("/auth/login");
+    }
+  }, [router]);
+
+  function handleLogout() {
+    clearToken();
+    router.replace("/auth/login");
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-border px-6 py-3 flex items-center justify-between">
@@ -19,6 +38,13 @@ export default function DashboardPage() {
           <span className="text-zinc-600 text-sm">
             Welcome back!
           </span>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500"
+          >
+            Log out
+          </button>
         </div>
       </nav>
 

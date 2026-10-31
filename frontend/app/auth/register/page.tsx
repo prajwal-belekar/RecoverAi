@@ -1,4 +1,66 @@
+"use client";
+
+import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getApiError, getApiUrl, storeToken, AuthToken } from "../../../lib/auth";
+
 export default function RegisterPage() {
+  const router = useRouter();
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+
+    const formData = new FormData(event.currentTarget);
+    const credentials = {
+      name: String(formData.get("name") ?? ""),
+      email: String(formData.get("email") ?? ""),
+      password: String(formData.get("password") ?? ""),
+    };
+
+    try {
+      const registerResponse = await fetch(getApiUrl("/auth/register"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+      });
+
+      if (!registerResponse.ok) {
+        throw new Error(await getApiError(registerResponse));
+      }
+
+      const loginResponse = await fetch(getApiUrl("/auth/login"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: credentials.email,
+          password: credentials.password,
+        }),
+      });
+
+      if (!loginResponse.ok) {
+        throw new Error(
+          `Account created, but automatic login failed: ${await getApiError(loginResponse)}`,
+        );
+      }
+
+      const token = (await loginResponse.json()) as AuthToken;
+      storeToken(token.access_token);
+      router.replace("/dashboard");
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Registration failed. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background p-6 flex items-center justify-center">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-8">
@@ -6,12 +68,13 @@ export default function RegisterPage() {
           Create Account
         </h2>
 
-        <form className="space-y-4">
+        <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label className="block text-sm font-medium text-zinc-700 mb-1">
               Name
             </label>
             <input
+              name="name"
               type="text"
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2.5 px-3 dark:bg-gray-700 dark:text-white"
               placeholder="John Doe"
@@ -24,6 +87,7 @@ export default function RegisterPage() {
               Email
             </label>
             <input
+              name="email"
               type="email"
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2.5 px-3 dark:bg-gray-700 dark:text-white"
               placeholder="john@example.com"
@@ -36,6 +100,7 @@ export default function RegisterPage() {
               Password
             </label>
             <input
+              name="password"
               type="password"
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2.5 px-3 dark:bg-gray-700 dark:text-white"
               placeholder="••••••••"
@@ -45,10 +110,17 @@ export default function RegisterPage() {
 
           <button
             type="submit"
+            disabled={isSubmitting}
             className="w-full rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600"
           >
-            Create Account
+            {isSubmitting ? "Creating Account..." : "Create Account"}
           </button>
+
+          {error && (
+            <p role="alert" className="text-center text-sm text-red-600">
+              {error}
+            </p>
+          )}
 
           <p className="text-center text-sm text-zinc-500">
             Already have an account?{" "}

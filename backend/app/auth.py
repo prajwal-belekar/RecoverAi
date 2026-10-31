@@ -3,6 +3,7 @@ ResolveAI Authentication Core Utilities
 """
 import bcrypt
 from datetime import datetime, timedelta, timezone
+from jose import jwt
 
 SECRET_KEY = "CHANGE_ME_IN_PRODUCTION_USE_ENV_VAR"
 ALGORITHM = "HS256"
@@ -21,5 +22,4 @@ def create_access_token(data: dict) -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    import jwt
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
