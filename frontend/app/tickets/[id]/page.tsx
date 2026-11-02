@@ -53,9 +53,9 @@ export default async function TicketDetailPage({
           </div>
 
           <p className="text-zinc-600 dark:text-gray-300">
-            I've been trying to process payment for my order for the past hour,
+            I&apos;ve been trying to process payment for my order for the past hour,
             and every time I enter my card details and click submit, the page
-            refreshes with a generic error code 'ERR_PAYMENT_FAILED'. I've tried
+            refreshes with a generic error code &apos;ERR_PAYMENT_FAILED&apos;. I&apos;ve tried
             two different credit cards and getting the same error.
           </p>
 
@@ -116,7 +116,7 @@ export default async function TicketDetailPage({
               Hi Jane,
             </p>
             <p>
-              Thank you for reaching out to us. I sincerely apologize for the inconvenience you've experienced with our payment processing system.
+              Thank you for reaching out to us. I sincerely apologize for the inconvenience you&apos;ve experienced with our payment processing system.
             </p>
             <p>
               We are currently investigating a temporary issue with our primary payment gateway that affected credit card transactions over the last two hours. Our engineering team has deployed a fix, and transactions are now processing normally.

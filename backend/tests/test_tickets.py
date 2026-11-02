@@ -1,6 +1,6 @@
 import os
 import sys
-db_path = os.path.join(os.path.dirname(__file__), '..', '..', 'resolveai.db')
+db_path = os.path.join(os.path.dirname(__file__), '..', '..', 'resolveai.ai')
 
 from app.main import app
 from fastapi.testclient import TestClient
@@ -20,17 +20,10 @@ def clean_db():
     Base.metadata.create_all(bind=engine)
 
 def test_create_ticket():
-    \"\"\"Test ticket creation.\"\"\"
     clean_db()
     login_response = login()
     headers = {'Authorization': f'Bearer {login_response.json()["access_token"]}'}
-    response = client.post('/api/v1/tickets/', json={
-        'title': 'Payment failure',
-        'description': 'Payment not going through',
-        'category': 'billing',
-        'customer_name': 'Test User',
-        'customer_email': 'test@example.com'
-    }, headers=headers)
+    response = client.post('/api/v1/tickets/', json={'title': 'Payment failure', 'description': 'Payment not going through', 'category': 'billing', 'customer_name': 'Test User', 'customer_email': 'test@example.com'}, headers=headers)
     assert response.status_code == 201
     data = response.json()
     assert data['title'] == 'Payment failure'
@@ -38,12 +31,10 @@ def test_create_ticket():
     assert data['status'] == 'Open'
 
 def test_list_tickets():
-    \"\"\"Test ticket listing.\"\"\"
     clean_db()
     login_response = login()
     # Create a ticket first
-    client.post('/api/v1/tickets/', json={'title': 'Test Ticket', 'description': 'Test description', 'category': 'billing'}, 
-                headers={'Authorization': f'Bearer {login_response.json()["access_token"]}'})
+    client.post('/api/v1/tickets/', json={'title': 'Test Ticket', 'description': 'Test description', 'category': 'billing'}, headers={'Authorization': f'Bearer {login_response.json()["access_token"]}'})
     headers = {'Authorization': f'Bearer {login_response.json()["access_token"]}'}
     response = client.get('/api/v1/tickets/', headers=headers)
     assert response.status_code == 200
@@ -51,13 +42,11 @@ def test_list_tickets():
     assert len(data) > 0
 
 def test_get_ticket():
-    \"\"\"Test getting a specific ticket.\"\"\"
     clean_db()
     login_response = login()
     headers = {'Authorization': f'Bearer {login_response.json()["access_token"]}'}
     # First create a ticket
-    client.post('/api/v1/tickets/', json={'title': 'Test Ticket', 'description': 'Test description', 'category': 'billing'}, 
-                headers={'Authorization': f'Bearer {login_response.json()["access_token"]}'})
+    client.post('/api/v1/tickets/', json={'title': 'Test Ticket', 'description': 'Test description', 'category': 'billing'}, headers={'Authorization': f'Bearer {login_response.json()["access_token"]}'})
     # Get the created ticket
     tickets = client.get('/api/v1/tickets/', headers=headers).json()
     ticket_id = tickets[0]['id']
@@ -66,13 +55,11 @@ def test_get_ticket():
     assert response.json()['title'] == 'Test Ticket'
 
 def test_update_ticket():
-    \"\"\"Test ticket update.\"\"\"
     clean_db()
     login_response = login()
     headers = {'Authorization': f'Bearer {login_response.json()["access_token"]}'}
     # Create ticket
-    client.post('/api/v1/tickets/', json={'title': 'Old Title', 'description': ' desc', 'category': 'billing'}, 
-                headers={'Authorization': f'Bearer {login_response.json()["access_token"]}'})
+    client.post('/api/v1/tickets/', json={'title': 'Old Title', 'description': ' desc', 'category': 'billing'}, headers={'Authorization': f'Bearer {login_response.json()["access_token"]}'})
     tickets = client.get('/api/v1/tickets/', headers=headers).json()
     ticket_id = tickets[0]['id']
     # Update ticket
@@ -82,13 +69,11 @@ def test_update_ticket():
     assert response.json()['status'] == 'Resolved'
 
 def test_delete_ticket():
-    \"\"\"Test ticket deletion.\"\"\"
     clean_db()
     login_response = login()
     headers = {'Authorization': f'Bearer {login_response.json()["access_token"]}'}
     # Create ticket
-    client.post('/api/v1/tickets/', json={'title': 'To Be Deleted', 'category': 'billing'}, 
-                headers={'Authorization': f'Bearer {login_response.json()["access_token"]}'})
+    client.post('/api/v1/tickets/', json={'title': 'To Be Deleted', 'category': 'billing'}, headers={'Authorization': f'Bearer {login_response.json()["access_token"]}'})
     tickets = client.get('/api/v1/tickets/', headers=headers).json()
     ticket_id = tickets[0]['id']
     # Delete ticket
@@ -99,13 +84,11 @@ def test_delete_ticket():
     assert len(tickets_after) == 0
 
 def test_ai_classify():
-    \"\"\"Test AI classification.\"\"\"
     clean_db()
     login_response = login()
     headers = {'Authorization': f'Bearer {login_response.json()["access_token"]}'}
     # Create ticket with payment-related text
-    client.post('/api/v1/tickets/', json={'title': 'Payment failure', 'description': 'Payment not going through', 'category': 'billing', 'customer_name': 'Test User', 'customer_email': 'test@example.com'}, 
-                headers={'Authorization': f'Bearer {login_response.json()["access_token"]}'})
+    client.post('/api/v1/tickets/', json={'title': 'Payment failure', 'description': 'Payment not going through', 'category': 'billing', 'customer_name': 'Test User', 'customer_email': 'test@example.com'}, headers={'Authorization': f'Bearer {login_response.json()["access_token"]}'})
     # Classify
     tickets = client.get('/api/v1/tickets/', headers=headers).json()
     ticket_id = tickets[0]['id']
@@ -119,14 +102,12 @@ def test_ai_classify():
     assert 0 <= data['confidence'] <= 1
 
 def test_ai_prioritize():
-    \"\"\"Test AI prioritization.\"\"\"
     clean_db()
     login_response = login()
     token = login_response.json()['access_token']
     headers = {'Authorization': f'Bearer {token}'}
     # Create ticket and classify
-    client.post('/api/v1/tickets/', json={'title': 'Payment failure', 'description': 'Payment not going through', 'category': 'billing', 'customer_name': 'Test User', 'customer_email': 'test@example.com'}, 
-                headers={'Authorization': f'Bearer {token}'})
+    client.post('/api/v1/tickets/', json={'title': 'Payment failure', 'description': 'Payment not going through', 'category': 'billing', 'customer_name': 'Test User', 'customer_email': 'test@example.com'}, headers={'Authorization': f'Bearer {token}'})
     tickets = client.get('/api/v1/tickets/', headers=headers).json()
     ticket_id = tickets[0]['id']
     # Classify first

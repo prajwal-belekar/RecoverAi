@@ -11,12 +11,12 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
-};
+});
 
 export const metadata: Metadata = {
   title: "ResolveAI - AI-Powered Customer Support",
   description: "AI-powered customer support and issue-resolution platform",
-};
+}
 
 export default function RootLayout({
   children,

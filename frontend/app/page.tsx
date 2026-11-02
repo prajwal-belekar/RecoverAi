@@ -13,7 +13,7 @@ export default function Home() {
 
         <div className="flex flex-col sm:flex-row gap-4 w-full max-w-2xl">
           <a
-            href "/auth/login"
+            href="/auth/login"
             className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-white px-8 text-indigo-600 font-medium shadow-sm hover:bg-indigo-50 transition-colors"
           >
             <svg
@@ -21,13 +21,13 @@ export default function Home() {
               viewBox="0 0 24 24"
               fill="currentColor"
             >
-              <path d="M18 8h-1V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2H3a1 1 0 0 0-1 1v6a1 1 0 1 0 2 0v-2h1l5 5 5-5h-2zm4 8c-.97 0-1.73-.77-1.73-1.73s.76-1.73 1.73-1.73 1.73.77 1.73 1.73-.76 1.73-1.73 1.73zM9 13c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10C6.48 5 5 6.48 5 8s1.48 3 3 3 3-1.48 3-3-1.48-3-3-3z" />
+              <path d="M18 8h-1V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2H3a1 1 0 1 0-1 1v6a1 1 0 1 0 2 0v-2h1l5 5 5-5h-2zm4 8c-.97 0-1.73-.77-1.73-1.73s.76-1.73 1.73-1.73 1.73.77 1.73 1.73-.76 1.73-1.73 1.73zM9 13c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10C6.48 5 5 6.48 5 8s1.48 3 3 3 3-1.48 3-3-1.48-3-3-3z" />
             </svg>
             Log In
           </a>
 
           <a
-            href "/auth/register"
+            href="/auth/register"
             className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-white px-8 text-white font-medium transition-colors hover:bg-opacity-10"
           >
             <svg
