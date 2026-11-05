@@ -87,8 +87,14 @@ export const api = {
 export const authApi = {
   login: (email: string, password: string) =>
     api.post<AuthToken>("/auth/login", { email, password }),
-  register: (name: string, email: string, password: string) =>
-    api.post<{ id: number; email: string; name: string }>("/auth/register", { name, email, password }),
+  register: (name: string, email: string, password: string, workspaceName?: string, workspaceSubdomain?: string) =>
+    api.post<{ id: number; email: string; name: string }>("/auth/register", {
+      name,
+      email,
+      password,
+      workspace_name: workspaceName,
+      workspace_subdomain: workspaceSubdomain,
+    }),
   createWorkspace: (name: string, subdomain: string, description?: string) =>
     api.post<{ id: number; name: string; subdomain: string }>("/auth/workspaces", { name, subdomain, description }),
 };

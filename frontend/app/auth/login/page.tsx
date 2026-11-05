@@ -4,10 +4,19 @@ import { FormEvent, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/ui/Toast";
-import { authApi } from "@/lib/api";
+import { authApi, api } from "@/lib/api";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
+
+interface UserProfile {
+  id: number;
+  email: string;
+  name: string;
+  role: string;
+  is_active: boolean;
+  workspace_id: number | null;
+}
 
 function LoginForm() {
   const router = useRouter();
@@ -62,6 +71,19 @@ function LoginForm() {
 
     try {
       await authApi.login(email, password);
+      
+      // Fetch user profile to get workspace context
+      try {
+        const profile = await api.get<UserProfile>("/users/me");
+        if (!profile.workspace_id) {
+          toast({ title: "No workspace", description: "Please create a workspace first", variant: "warning" });
+          router.replace("/auth/register");
+          return;
+        }
+      } catch (profileError) {
+        console.error("Failed to fetch user profile:", profileError);
+      }
+      
       toast({ title: "Welcome back!", variant: "success" });
       router.replace(redirect);
     } catch (error) {

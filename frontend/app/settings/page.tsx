@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface SettingsState {
   name: string;
@@ -22,6 +23,15 @@ interface SettingsError {
   password?: string;
 }
 
+interface UserProfile {
+  id: number;
+  email: string;
+  name: string;
+  role: string;
+  is_active: boolean;
+  workspace_id: number | null;
+}
+
 export default function SettingsPage() {
   const { toast } = useToast();
   const [state, setState] = useState<SettingsState>({
@@ -33,6 +43,21 @@ export default function SettingsPage() {
     isLoading: false,
   });
   const [errors, setErrors] = useState<SettingsError>({});
+  const [isFetchingProfile, setIsFetchingProfile] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profile = await api.get<UserProfile>("/users/me");
+        setState((prev) => ({ ...prev, name: profile.name, email: profile.email }));
+      } catch (error) {
+        toast({ title: "Error", description: "Failed to load profile", variant: "danger" });
+      } finally {
+        setIsFetchingProfile(false);
+      }
+    };
+    fetchProfile();
+  }, [toast]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -92,6 +117,27 @@ export default function SettingsPage() {
       setState((prev) => ({ ...prev, isLoading: false }));
     }
   };
+
+  if (isFetchingProfile) {
+    return (
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-md">
+          <Card>
+            <CardHeader>
+              <CardTitle>Settings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -166,12 +212,12 @@ export default function SettingsPage() {
                   >
                     {state.isLoading ? "Updating..." : "Update Password"}
                   </Button>
-                </CardContent>
-              </Card>
+</CardContent>
+            </Card>
             </form>
           </CardContent>
         </Card>
-        </div>
       </div>
+    </div>
   );
 }

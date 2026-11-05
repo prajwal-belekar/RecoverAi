@@ -54,7 +54,7 @@ export function TopNav({ className, onMenuClick }: TopNavProps) {
         const response = await fetch("/api/v1/activity/recent?limit=5");
         if (response.ok) {
           const data = await response.json();
-          setNotifications(data.map((item: any) => ({
+          setNotifications(data.map((item: { id: string; type: string; message: string; timestamp: string }) => ({
             id: item.id,
             title: item.type === "classification" ? "AI Classification" : "New Activity",
             message: item.message,

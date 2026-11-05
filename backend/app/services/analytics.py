@@ -179,15 +179,15 @@ def get_resolution_trends(db: Session, days: int = 30) -> List[Dict[str, Any]]:
     cutoff = datetime.utcnow() - timedelta(days=days)
     
     rows = db.query(
-        cast(Ticket.created_at, Date).label("date"),
+        func.date(Ticket.created_at).label("date"),
         func.count(Ticket.id).label("created"),
         func.count(Ticket.id).filter(Ticket.status == "Resolved").label("resolved")
     ).filter(
         Ticket.created_at >= cutoff
     ).group_by(
-        cast(Ticket.created_at, Date)
+        func.date(Ticket.created_at)
     ).order_by(
-        cast(Ticket.created_at, Date)
+        func.date(Ticket.created_at)
     ).all()
     
     result = []
@@ -224,16 +224,16 @@ def get_ai_trends(db: Session, days: int = 30) -> List[Dict[str, Any]]:
     cutoff = datetime.utcnow() - timedelta(days=days)
     
     rows = db.query(
-        cast(AIClassification.created_at, Date).label("date"),
+        func.date(AIClassification.created_at).label("date"),
         func.count(AIClassification.id).label("classified"),
         func.count(AIClassification.id).label("assisted"),  # Same for now
         func.count(AIClassification.id).label("approved")   # Would need approval tracking
     ).filter(
         AIClassification.created_at >= cutoff
     ).group_by(
-        cast(AIClassification.created_at, Date)
+        func.date(AIClassification.created_at)
     ).order_by(
-        cast(AIClassification.created_at, Date)
+        func.date(AIClassification.created_at)
     ).all()
     
     result = []

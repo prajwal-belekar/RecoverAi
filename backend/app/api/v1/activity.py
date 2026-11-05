@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from ...database import get_db
 from ...models import Ticket, TicketUpdate, AIClassification, User
 
-router = APIRouter(prefix="/activity", tags=["activity"])
+router = APIRouter(tags=["activity"])
 
 @router.get("/recent", response_model=List[dict])
 def get_recent_activity(

@@ -12,8 +12,15 @@ Base.metadata.create_all(bind=engine)
 client = TestClient(app)
 
 def login():
+    # Register
     client.post('/api/v1/auth/register', json={'email': 'test@example.com', 'password': 'password123', 'name': 'Test User'})
-    return client.post('/api/v1/auth/login', json={'email': 'test@example.com', 'password': 'password123'})
+    # Login
+    login_response = client.post('/api/v1/auth/login', json={'email': 'test@example.com', 'password': 'password123'})
+    # Create workspace for the user
+    token = login_response.json()['access_token']
+    headers = {'Authorization': f'Bearer {token}'}
+    client.post('/api/v1/auth/workspaces', json={'name': 'Test Workspace', 'subdomain': 'test-workspace'}, headers=headers)
+    return login_response
 
 def clean_db():
     Base.metadata.drop_all(bind=engine)

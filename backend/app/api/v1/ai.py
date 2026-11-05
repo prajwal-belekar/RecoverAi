@@ -250,7 +250,7 @@ def get_suggested_response(ticket_id: int, db: Session = Depends(get_db)):
     classification = db.query(AIClassification).filter(
         AIClassification.ticket_id == ticket_id
     ).first()
-    from app.api.v1.knowledge import extract_text_from_file, chunk_text, generate_mock_embedding
+    from app.api.v1.knowledge import extract_text_from_file, chunk_text, generate_embedding
     import numpy as np
     query = f"{db_ticket.title} {db_ticket.description or ''}"
     sources = []

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -126,13 +126,22 @@ export default function TicketInboxPage() {
     category: "all",
     search: "",
   });
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const loadTickets = async () => {
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(filters.search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [filters.search]);
+
+  const loadTickets = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -140,7 +149,7 @@ export default function TicketInboxPage() {
       if (filters.status !== "all") params.append("status", filters.status);
       if (filters.priority !== "all") params.append("priority", filters.priority);
       if (filters.category !== "all") params.append("category", filters.category);
-      if (filters.search) params.append("q", filters.search);
+      if (debouncedSearch) params.append("search", debouncedSearch);
       params.append("_page", String(page));
       params.append("_limit", String(pageSize));
 
@@ -153,30 +162,33 @@ export default function TicketInboxPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters.status, filters.priority, filters.category, debouncedSearch, page, pageSize, toast]);
+
+  // Initial load on mount
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    loadTickets();
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleStatusChange = (status: string) => {
     setFilters({ ...filters, status });
     setPage(1);
-    loadTickets();
   };
 
   const handlePriorityChange = (priority: string) => {
     setFilters({ ...filters, priority });
     setPage(1);
-    loadTickets();
   };
 
   const handleCategoryChange = (category: string) => {
     setFilters({ ...filters, category });
     setPage(1);
-    loadTickets();
   };
 
   const handleSearchChange = (search: string) => {
     setFilters({ ...filters, search });
     setPage(1);
-    loadTickets();
   };
 
   return (
@@ -237,7 +249,6 @@ export default function TicketInboxPage() {
             value={filters.search}
             onChange={(e) => handleSearchChange(e.target.value)}
             showToggle={false}
-            disabled={true}
           />
         </div>
       </div>

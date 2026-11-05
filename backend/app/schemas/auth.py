@@ -5,6 +5,8 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     name: str
+    workspace_name: Optional[str] = None
+    workspace_subdomain: Optional[str] = None
 
 class LoginSchema(BaseModel):
     email: EmailStr

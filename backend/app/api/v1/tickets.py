@@ -5,14 +5,24 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 from sqlalchemy.orm import Session
 from ...database import get_db
-from ...models import Ticket
+from ...models import Ticket, AIClassification
 from ...schemas.ticket import TicketCreate, TicketUpdate, TicketResponse
+from ...core.auth import get_current_user
 
 router = APIRouter()
 
 @router.post("/", response_model=TicketResponse, status_code=201)
-def create_ticket(ticket_data: TicketCreate, db: Session = Depends(get_db)):
-    db_ticket = Ticket(**ticket_data.model_dump())
+def create_ticket(
+    ticket_data: TicketCreate, 
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    if not current_user.workspace_id:
+        raise HTTPException(status_code=400, detail="User must belong to a workspace to create tickets")
+    
+    ticket_dict = ticket_data.model_dump()
+    ticket_dict["workspace_id"] = current_user.workspace_id
+    db_ticket = Ticket(**ticket_dict)
     db.add(db_ticket)
     db.commit()
     db.refresh(db_ticket)
@@ -28,9 +38,13 @@ def list_tickets(
     offset: int = Query(0, ge=0),
     sort_by: str = Query("created_at"),
     sort_order: str = Query("desc"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
-    query = db.query(Ticket)
+    if not current_user.workspace_id:
+        return []
+    
+    query = db.query(Ticket).filter(Ticket.workspace_id == current_user.workspace_id)
     
     if status:
         query = query.filter(Ticket.status == status)
@@ -51,15 +65,15 @@ def list_tickets(
     return query.offset(offset).limit(limit).all()
 
 @router.get("/pending-approvals", response_model=list[dict])
-def get_pending_approvals(db: Session = Depends(get_db)):
+def get_pending_approvals(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """Get tickets with AI responses pending human approval"""
-    from ...models import AIClassification
-
-    # Find tickets that have AI classifications but no corresponding approval
-    # (We use the presence of AIClassification as a proxy for pending approval)
+    if not current_user.workspace_id:
+        return []
+    
     results = (
         db.query(Ticket, AIClassification.confidence)
         .join(AIClassification, AIClassification.ticket_id == Ticket.id)
+        .filter(Ticket.workspace_id == current_user.workspace_id)
         .order_by(AIClassification.created_at.desc())
         .limit(20)
         .all()
@@ -79,15 +93,27 @@ def get_pending_approvals(db: Session = Depends(get_db)):
     ]
 
 @router.get("/{ticket_id}", response_model=TicketResponse)
-def get_ticket(ticket_id: int, db: Session = Depends(get_db)):
-    db_ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+def get_ticket(ticket_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    if not current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    db_ticket = db.query(Ticket).filter(
+        Ticket.id == ticket_id,
+        Ticket.workspace_id == current_user.workspace_id
+    ).first()
     if not db_ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return db_ticket
 
 @router.patch("/{ticket_id}", response_model=TicketResponse)
-def update_ticket(ticket_id: int, ticket_data: TicketUpdate, db: Session = Depends(get_db)):
-    db_ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+def update_ticket(ticket_id: int, ticket_data: TicketUpdate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    if not current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    db_ticket = db.query(Ticket).filter(
+        Ticket.id == ticket_id,
+        Ticket.workspace_id == current_user.workspace_id
+    ).first()
     if not db_ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     
@@ -99,8 +125,14 @@ def update_ticket(ticket_id: int, ticket_data: TicketUpdate, db: Session = Depen
     return db_ticket
 
 @router.delete("/{ticket_id}", status_code=204)
-def delete_ticket(ticket_id: int, db: Session = Depends(get_db)):
-    db_ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+def delete_ticket(ticket_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    if not current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    db_ticket = db.query(Ticket).filter(
+        Ticket.id == ticket_id,
+        Ticket.workspace_id == current_user.workspace_id
+    ).first()
     if not db_ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     

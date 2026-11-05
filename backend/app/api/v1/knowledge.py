@@ -8,8 +8,9 @@ from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import KnowledgeBase, Workspace
+from app.models import KnowledgeBase, Workspace, User
 from app.schemas.knowledge import KnowledgeBaseCreate, KnowledgeBaseResponse
+from app.core.auth import get_current_user
 import numpy as np
 
 router = APIRouter()
@@ -101,14 +102,23 @@ def keyword_search(query: str, chunk_metadata: Dict[str, dict]) -> list:
 
 
 @router.get("/", response_model=List[KnowledgeBaseResponse])
-def list_knowledge_base(db: Session = Depends(get_db)):
-    """List all knowledge base documents"""
-    kb_entries = db.query(KnowledgeBase).all()
+def list_knowledge_base(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """List all knowledge base documents for the user's workspace"""
+    if not current_user.workspace_id:
+        return []
+    
+    kb_entries = db.query(KnowledgeBase).filter(
+        KnowledgeBase.workspace_id == current_user.workspace_id
+    ).all()
+    
     return [
         {
             "id": kb.id,
             "title": kb.title,
-            "source_type": kb.metadata.get("source_type", "unknown") if kb.metadata else "unknown",
+            "source_type": kb.doc_metadata.get("source_type", "unknown") if kb.doc_metadata else "unknown",
             "created_at": str(kb.created_at),
             "chunk_count": kb.chunk_count if hasattr(kb, 'chunk_count') else 0
         }
@@ -119,9 +129,13 @@ def list_knowledge_base(db: Session = Depends(get_db)):
 @router.post("/upload", response_model=KnowledgeBaseResponse, status_code=201)
 def upload_knowledge_document(
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Upload and process a knowledge base document"""
+    if not current_user.workspace_id:
+        raise HTTPException(status_code=400, detail="User must belong to a workspace to upload documents")
+    
     # Read file content
     content = file.file.read()
     filename = file.filename
@@ -135,14 +149,12 @@ def upload_knowledge_document(
     # Create knowledge base entry
     content_hash = hashlib.sha256(content).hexdigest()[:12]
     
-    workspace_id = 1  # In production, get from authenticated user context
-    
     kb_entry = KnowledgeBase(
         title=filename,
         content=text,
         embedding=generate_embedding(text),
         metadata={"source_type": file.content_type or "unknown", "file_name": filename},
-        workspace_id=workspace_id
+        workspace_id=current_user.workspace_id
     )
     
     db.add(kb_entry)
@@ -167,9 +179,20 @@ def upload_knowledge_document(
 
 
 @router.delete("/{kb_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_knowledge_base(kb_id: int, db: Session = Depends(get_db)):
+def delete_knowledge_base(
+    kb_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Delete a knowledge base document"""
-    kb_entry = db.query(KnowledgeBase).filter(KnowledgeBase.id == kb_id).first()
+    if not current_user.workspace_id:
+        raise HTTPException(status_code=400, detail="User must belong to a workspace")
+    
+    kb_entry = db.query(KnowledgeBase).filter(
+        KnowledgeBase.id == kb_id,
+        KnowledgeBase.workspace_id == current_user.workspace_id
+    ).first()
+    
     if not kb_entry:
         raise HTTPException(status_code=404, detail="Knowledge base entry not found")
     
@@ -202,9 +225,20 @@ def search_knowledge(q: str, db: Session = Depends(get_db)):
 
 
 @router.get("/{kb_id}", response_model=KnowledgeBaseResponse)
-def get_knowledge_base(kb_id: int, db: Session = Depends(get_db)):
+def get_knowledge_base(
+    kb_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Get knowledge base document by ID"""
-    kb_entry = db.query(KnowledgeBase).filter(KnowledgeBase.id == kb_id).first()
+    if not current_user.workspace_id:
+        raise HTTPException(status_code=400, detail="User must belong to a workspace")
+    
+    kb_entry = db.query(KnowledgeBase).filter(
+        KnowledgeBase.id == kb_id,
+        KnowledgeBase.workspace_id == current_user.workspace_id
+    ).first()
+    
     if not kb_entry:
         raise HTTPException(status_code=404, detail="Knowledge base entry not found")
     
