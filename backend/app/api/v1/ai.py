@@ -1,19 +1,17 @@
 """
 ResolveAI AI Classification & Priority API
 """
-from typing import List
+import os
+import json
+from typing import List, Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Ticket, AIClassification, AIPriority
+from app.models import Ticket, AIClassification, AIPriority, KnowledgeBase
 from app.core.config import is_ai_available, get_fallback_mode
 import openai
-from typing import Optional, List
-from sqlalchemy.orm import Session
-from sqlalchemy import create_engine
 from app.schemas.ai import TicketClassification, TicketPriority
-from typing import Optional, List
 
 # --- Models ---
 class SuggestedResponse(BaseModel):
@@ -265,7 +263,7 @@ def get_suggested_response(ticket_id: int, db: Session = Depends(get_db)):
         query_words = set(query.lower().split())
         for kb_entry in kb_entries:
             kb_text = extract_text_from_file(kb_entry.content.encode() if isinstance(kb_entry.content, str) else kb_entry.content, kb_entry.title) if isinstance(kb_entry.content, bytes) else \
-                (kb_entry.content[:500] if kb_entry.content else "")
+                    (kb_entry.content[:500] if kb_entry.content else "")
             kb_words = set(kb_text.lower().split())
             common = query_words & kb_words
             if common:
@@ -302,3 +300,20 @@ def get_suggested_response(ticket_id: int, db: Session = Depends(get_db)):
         sources=sources[:3],
         requires_approval=True
     )
+
+
+@router.post("/response/complete", response_model=dict)
+def approve_response(approval: ResponseApproval, db: Session = Depends(get_db)):
+    """Approve or reject AI-suggested response (human approval workflow)"""
+    if approval.approved:
+        return {
+            "status": "approved",
+            "message": "Response approved and ready for customer delivery",
+            "requires_human_oversight": False
+        }
+    else:
+        return {
+            "status": "rejected", 
+            "message": "Response rejected. Agent will compose alternative response.",
+            "requires_human_oversight": True
+        }

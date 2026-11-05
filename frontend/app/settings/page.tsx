@@ -6,7 +6,6 @@ import { useToast } from "@/components/ui/Toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Skeleton } from "@/components/ui/Skeleton";
 
 interface SettingsState {
   name: string;
@@ -52,10 +51,11 @@ export default function SettingsPage() {
         email: state.email,
       });
       toast({ title: "Success", description: "Profile updated successfully", variant: "success" });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to update profile";
       setErrors({
-        name: error.response?.data?.error || "Failed to update profile",
-        email: error.response?.data?.error || "Failed to update profile",
+        name: message,
+        email: message,
       });
     } finally {
       setState((prev) => ({ ...prev, isLoading: false }));
@@ -79,14 +79,16 @@ export default function SettingsPage() {
         newPassword: state.newPassword,
       });
       toast({ title: "Success", description: "Password updated successfully", variant: "success" });
-      setState({
+      setState((prev) => ({
+        ...prev,
         oldPassword: "",
         newPassword: "",
         confirmPassword: "",
         isLoading: false,
-      });
-    } catch (error: any) {
-      setErrors({ password: error.response?.data?.error || "Failed to update password" });
+      }));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to update password";
+      setErrors({ password: message });
       setState((prev) => ({ ...prev, isLoading: false }));
     }
   };
@@ -132,7 +134,7 @@ export default function SettingsPage() {
                     placeholder="Old Password"
                     value={state.oldPassword}
                     onChange={handleChange}
-                    error={errors.oldPassword}
+                    error={errors.password}
                     disabled={state.isLoading}
                     required
                   />
@@ -142,7 +144,7 @@ export default function SettingsPage() {
                     placeholder="New Password"
                     value={state.newPassword}
                     onChange={handleChange}
-                    error={errors.newPassword}
+                    error={errors.password}
                     disabled={state.isLoading}
                     required
                   />
@@ -152,7 +154,7 @@ export default function SettingsPage() {
                     placeholder="Confirm Password"
                     value={state.confirmPassword}
                     onChange={handleChange}
-                    error={errors.confirmPassword}
+                    error={errors.password}
                     disabled={state.isLoading}
                     required
                   />
@@ -167,9 +169,9 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
             </form>
-          </Card>
+          </CardContent>
+        </Card>
         </div>
       </div>
-    </div>
   );
 }

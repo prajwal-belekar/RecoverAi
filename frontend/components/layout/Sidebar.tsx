@@ -6,6 +6,8 @@ import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { SVGProps } from "react";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { getStoredToken } from "@/lib/auth";
 
 interface SidebarProps {
   className?: string;
@@ -240,7 +242,40 @@ function WorkspaceSelector({ isCollapsed }: { isCollapsed: boolean }) {
 }
 
 function UserProfile({ isCollapsed }: { isCollapsed: boolean }) {
-  const user = { name: "John Doe", email: "john@acme.com", role: "Admin" };
+  const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await fetch("/api/v1/users/me", {
+          headers: {
+            Authorization: `Bearer ${getStoredToken()}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUser({ name: data.name, email: data.email, role: data.role });
+        }
+      } catch (error) {
+        console.error("Failed to fetch user:", error);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  if (!user) {
+    return (
+      <div className="flex items-center gap-3 p-2">
+        <Skeleton className="h-10 w-10 rounded-lg" />
+        {!isCollapsed && (
+          <div className="flex-1">
+            <Skeleton className="h-4 w-24 mb-1" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (isCollapsed) {
     return (

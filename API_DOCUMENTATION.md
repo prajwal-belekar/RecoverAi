@@ -359,8 +359,6 @@ python -m pytest tests/ -v
 Tests are located in the `tests/` directory:
 - `test_auth.py` - Authentication (register, login)
 - `test_tickets.py` - Ticket CRUD, AI classification, priority
-- `test_knowledge.py` - Knowledge base upload, search
-- `test_response.py` - Response generation, approval
 
 ### Running Specific Tests
 
@@ -390,8 +388,8 @@ pip install pytest fastapi pytest-testclient
 Current test coverage includes:
 - Authentication: register, login, validation
 - Tickets: CRUD operations, workspace isolation
-- AI: Classification, priority, response generation
-- Knowledge base: Upload, search
+- AI and knowledge-base behavior is covered by the API implementation and should be
+  added to the backend test suite before claiming automated coverage.
 
 ## Development
 

@@ -4,7 +4,7 @@ ResolveAI Knowledge Base & RAG API
 import os
 import json
 import hashlib
-from fastapi import APIRouter, UploadFile, File, Depends
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -100,6 +100,22 @@ def keyword_search(query: str, chunk_metadata: Dict[str, dict]) -> list:
     return results[:5]
 
 
+@router.get("/", response_model=List[KnowledgeBaseResponse])
+def list_knowledge_base(db: Session = Depends(get_db)):
+    """List all knowledge base documents"""
+    kb_entries = db.query(KnowledgeBase).all()
+    return [
+        {
+            "id": kb.id,
+            "title": kb.title,
+            "source_type": kb.metadata.get("source_type", "unknown") if kb.metadata else "unknown",
+            "created_at": str(kb.created_at),
+            "chunk_count": kb.chunk_count if hasattr(kb, 'chunk_count') else 0
+        }
+        for kb in kb_entries
+    ]
+
+
 @router.post("/upload", response_model=KnowledgeBaseResponse, status_code=201)
 def upload_knowledge_document(
     file: UploadFile = File(...),
@@ -150,6 +166,25 @@ def upload_knowledge_document(
     return {"id": kb_entry.id, "title": filename, "source_type": "unknown", "created_at": str(kb_entry.created_at), "chunk_count": len(chunks)}
 
 
+@router.delete("/{kb_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_knowledge_base(kb_id: int, db: Session = Depends(get_db)):
+    """Delete a knowledge base document"""
+    kb_entry = db.query(KnowledgeBase).filter(KnowledgeBase.id == kb_id).first()
+    if not kb_entry:
+        raise HTTPException(status_code=404, detail="Knowledge base entry not found")
+    
+    # Clean up in-memory embeddings
+    keys_to_delete = [k for k in embedding_store.keys() if k.startswith(f"kb_{kb_id}_")]
+    for key in keys_to_delete:
+        del embedding_store[key]
+        if key in chunk_metadata:
+            del chunk_metadata[key]
+    
+    db.delete(kb_entry)
+    db.commit()
+    return None
+
+
 @router.post("/search/{q}", response_model=dict)
 def search_knowledge(q: str, db: Session = Depends(get_db)):
     """Semantic search in knowledge base using RAG"""
@@ -171,7 +206,6 @@ def get_knowledge_base(kb_id: int, db: Session = Depends(get_db)):
     """Get knowledge base document by ID"""
     kb_entry = db.query(KnowledgeBase).filter(KnowledgeBase.id == kb_id).first()
     if not kb_entry:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Knowledge base entry not found")
     
     return {"id": kb_entry.id, "title": kb_entry.title, "source_type": kb_entry.metadata.get("source_type", "unknown") if kb_entry.metadata else "unknown", "created_at": str(kb_entry.created_at), "chunk_count": kb_entry.chunk_count if hasattr(kb_entry, 'chunk_count') else 0}

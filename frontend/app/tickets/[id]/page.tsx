@@ -99,7 +99,7 @@ export default function TicketDetailPage({
   const handleApproveResponse = useCallback(async () => {
     setApprovalPending(true);
     try {
-      const result = await api.post<ApprovalResult>(`/ai-response/complete`, { approved: true });
+      const result = await api.post<ApprovalResult>(`/ai/response/complete`, { approved: true });
       setApprovalPending(false);
       toast({ title: "Success", description: result.message, variant: "success" });
     } catch (error) {
@@ -111,7 +111,7 @@ export default function TicketDetailPage({
   const handleRejectResponse = useCallback(async () => {
     setApprovalPending(true);
     try {
-      const result = await api.post<ApprovalResult>(`/ai-response/complete`, { approved: false });
+      const result = await api.post<ApprovalResult>(`/ai/response/complete`, { approved: false });
       setApprovalPending(false);
       toast({ title: "Rejected", description: result.message, variant: "warning" });
     } catch (error) {

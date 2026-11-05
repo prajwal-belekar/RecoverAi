@@ -20,8 +20,6 @@ python -m pytest tests/ -v
 #### Test Files
 - `test_auth.py` - Authentication flow (register, login)
 - `test_tickets.py` - Ticket CRUD, AI classification/priority
-- `test_knowledge.py` - Knowledge base upload, search
-- `test_response.py` - Response generation, approval
 
 ### Running Tests
 

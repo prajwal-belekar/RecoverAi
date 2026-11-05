@@ -15,6 +15,7 @@ class User(Base):
     role = Column(String(50), default="agent")
     is_active = Column(Boolean, default=True)
     workspace_id = Column(Integer, ForeignKey("workspaces.id"), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     workspace = relationship("Workspace", back_populates="users", foreign_keys=[workspace_id])
 
@@ -24,9 +25,11 @@ class Workspace(Base):
     name = Column(String(200), nullable=False)
     subdomain = Column(String(100), unique=True, index=True, nullable=False)
     description = Column(Text, nullable=True)
+    owner_id = Column(Integer, ForeignKey("users.id", use_alter=True, name="fk_workspace_owner"), nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
-    users = relationship("User", back_populates="workspace")
+    owner = relationship("User", foreign_keys=[owner_id])
+    users = relationship("User", back_populates="workspace", foreign_keys="User.workspace_id")
     tickets = relationship("Ticket", back_populates="workspace")
     knowledge_base = relationship("KnowledgeBase", back_populates="workspace")
 
@@ -85,9 +88,18 @@ class KnowledgeBase(Base):
     doc_metadata = Column(JSON, nullable=True, default={})
     source_type = Column(String(50), nullable=True)
     workspace_id = Column(Integer, ForeignKey("workspaces.id"), nullable=False)
+    chunk_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     workspace = relationship("Workspace", back_populates="knowledge_base")
+
+class TicketUpdate(Base):
+    __tablename__ = "ticket_updates"
+    id = Column(Integer, primary_key=True, index=True)
+    ticket_id = Column(Integer, ForeignKey("tickets.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    message = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class APIKey(Base):
     __tablename__ = "api_keys"

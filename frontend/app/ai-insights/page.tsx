@@ -22,28 +22,63 @@ interface TrendPoint {
   neutral: number;
 }
 
+interface TotalsResponse {
+  total: number;
+  open: number;
+  resolved: number;
+  critical: number;
+}
+
+interface SentimentTrendResponse {
+  date: string;
+  positive: number;
+  negative: number;
+  neutral: number;
+}
+
+interface RecurringIssue {
+  issue: string;
+  frequency: number;
+  type: string;
+}
+
 export default function AIInsightsPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<InsightStats | null>(null);
   const [trends, setTrends] = useState<TrendPoint[]>([]);
+  const [recurringIssues, setRecurringIssues] = useState<RecurringIssue[]>([]);
 
   const loadInsights = useCallback(async () => {
     try {
       setLoading(true);
       const [
-        statsData,
-        trendsData,
+        totalsData,
+        sentimentTrendData,
+        recurringData,
       ] = await Promise.all([
-        fetch("/api/insights/stats"),
-        fetch("/api/insights/trends?days=30"),
+        api.get<TotalsResponse>("/analytics/totals"),
+        api.get<SentimentTrendResponse[]>(`/analytics/sentiment-trend?days=30`),
+        api.get<RecurringIssue[]>(`/analytics/recurring?limit=5`),
       ]);
 
-      const parsedStats = (await statsData.json()) as InsightStats;
-      const parsedTrends = (await trendsData.json()) as TrendPoint[];
+      // Calculate negative sentiment rate
+      const totalSentiment = sentimentTrendData.reduce((sum, d) => sum + d.positive + d.negative + d.neutral, 0);
+      const totalNegative = sentimentTrendData.reduce((sum, d) => sum + d.negative, 0);
+      const negativeSentimentRate = totalSentiment > 0 ? (totalNegative / totalSentiment) * 100 : 0;
 
-      setStats(parsedStats);
-      setTrends(parsedTrends);
+      // Find repeated payment failures from recurring issues
+      const paymentIssue = recurringData.find(r => r.issue.toLowerCase().includes("billing") || r.issue.toLowerCase().includes("payment"));
+      const repeatedPaymentCount = paymentIssue ? paymentIssue.frequency : 0;
+
+      setStats({
+        totalTickets: totalsData.total,
+        resolvedTickets: totalsData.resolved,
+        negativeSentimentRate,
+        repeatedPaymentCount,
+      });
+      setTrends(sentimentTrendData);
+      setRecurringIssues(recurringData);
     } catch (error) {
       toast({ title: "Error", description: "Failed to load AI insights", variant: "danger" });
     } finally {
