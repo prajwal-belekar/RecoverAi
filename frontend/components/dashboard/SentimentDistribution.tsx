@@ -1,0 +1,118 @@
+"use client";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+
+interface SentimentDistributionProps {
+  data: Array<{ sentiment: string; count: number }>;
+  loading?: boolean;
+}
+
+const SENTIMENT_COLORS: Record<string, string> = {
+  positive: "var(--success)",
+  negative: "var(--danger)",
+  neutral: "var(--warning)",
+};
+
+function renderPieLabel(props: { name?: string; percent?: number }) {
+  const name = props.name ?? "";
+  const percent = props.percent ?? 0;
+  return `${name.charAt(0).toUpperCase() + name.slice(1)} ${(percent * 100).toFixed(0)}%`;
+}
+
+export function SentimentDistribution({ data, loading }: SentimentDistributionProps) {
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Sentiment Distribution</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-64 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Sentiment Distribution</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64 flex items-center justify-center text-muted-foreground">
+            No sentiment data available
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const total = data.reduce((sum, d) => sum + d.count, 0);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Sentiment Distribution</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex h-64">
+          <ResponsiveContainer width="60%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={80}
+                paddingAngle={2}
+                dataKey="count"
+                nameKey="sentiment"
+                label={renderPieLabel}
+                labelLine={false}
+              >
+                {data.map((item, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={SENTIMENT_COLORS[item.sentiment] || `var(--color-${index % 6})`}
+                  />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "var(--card)",
+                  border: "1px solid var(--card-border)",
+                  borderRadius: "8px",
+                }}
+                formatter={(value) => [value, "Tickets"]}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          <Legend width="40%" layout="vertical" align="center" verticalAlign="middle">
+            {data.map((item, index) => (
+              <div key={item.sentiment} className="flex items-center gap-2 py-1">
+                <div
+                  className="h-3 w-3 rounded-full"
+                  style={{ backgroundColor: SENTIMENT_COLORS[item.sentiment] || `var(--color-${index % 6})` }}
+                />
+                <span className="text-sm text-foreground capitalize">{item.sentiment}</span>
+                <span className="text-sm text-muted-foreground ml-auto">
+                  {item.count} ({(item.count / total * 100).toFixed(1)}%)
+                </span>
+              </div>
+            ))}
+          </Legend>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

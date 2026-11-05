@@ -89,3 +89,41 @@ export async function getAIAssistedStats(): Promise<AIAssistedStats> {
     return { ai_assisted_count: 0, total_tickets: 0, percentage: 0 };
   }
 }
+
+export interface ResolutionTrend {
+  date: string;
+  created: number;
+  resolved: number;
+}
+
+export async function getResolutionTrends(days = 30): Promise<ResolutionTrend[]> {
+  try {
+    return await api.get<ResolutionTrend[]>(`/analytics/resolution-trends?days=${days}`);
+  } catch {
+    return [];
+  }
+}
+
+export interface AIPerformanceData {
+  aiClassifiedTickets: number;
+  totalTickets: number;
+  aiAssistedResponses: number;
+  humanApprovalRate: number;
+  aiResponseAcceptanceRate: number;
+  avgConfidence: number;
+}
+
+export async function getAIPerformanceData(): Promise<AIPerformanceData> {
+  try {
+    return await api.get<AIPerformanceData>("/analytics/ai-performance");
+  } catch {
+    return {
+      aiClassifiedTickets: 0,
+      totalTickets: 0,
+      aiAssistedResponses: 0,
+      humanApprovalRate: 0,
+      aiResponseAcceptanceRate: 0,
+      avgConfidence: 0,
+    };
+  }
+}

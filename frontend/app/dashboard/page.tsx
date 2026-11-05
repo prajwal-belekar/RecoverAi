@@ -1,18 +1,32 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardKPICards } from "@/components/dashboard/KPICards";
 import { TicketVolumeChart } from "@/components/dashboard/TicketVolumeChart";
 import { CategoryDistribution } from "@/components/dashboard/CategoryDistribution";
 import { PriorityDistribution } from "@/components/dashboard/PriorityDistribution";
+import { SentimentDistribution } from "@/components/dashboard/SentimentDistribution";
+import { ResolutionTrendsChart } from "@/components/dashboard/ResolutionTrendsChart";
+import { AIPerformanceSummary } from "@/components/dashboard/AIPerformanceSummary";
 import { RecentTickets } from "@/components/dashboard/RecentTickets";
 import { PendingApprovals } from "@/components/dashboard/PendingApprovals";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
+import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { getDashboardTotals, getCategoryDistribution, getPriorityDistribution, getAverageResolutionTime } from "@/lib/dashboardApi";
+import { EmptyState, EmptyActivityIcon } from "@/components/ui/EmptyState";
+import {
+  getDashboardTotals,
+  getCategoryDistribution,
+  getPriorityDistribution,
+  getSentimentDistribution,
+  getAverageResolutionTime,
+  getResolutionTrends,
+  getAIPerformanceData,
+} from "@/lib/dashboardApi";
 import { api } from "@/lib/api";
+import { useToast } from "@/components/ui/Toast";
 
 interface Ticket {
   id: number;
@@ -42,68 +56,115 @@ interface Activity {
   timestamp: string;
 }
 
+interface DateRange {
+  from: Date | undefined;
+  to: Date | undefined;
+}
+
 export default function DashboardPage() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [totals, setTotals] = useState({ total: 0, open: 0, resolved: 0, critical: 0 });
-  const [categories, setCategories] = useState<Array<{ category: string; count: number }>>([]);
-  const [priorities, setPriorities] = useState<Array<{ priority: string; avg_score: number; count: number }>>([]);
+  const [categories, setCategories] = useState<{ category: string; count: number }[]>([]);
+  const [priorities, setPriorities] = useState<{ priority: string; avg_score: number; count: number }[]>([]);
+  const [sentiments, setSentiments] = useState<{ sentiment: string; count: number }[]>([]);
   const [avgResolutionTime, setAvgResolutionTime] = useState<number | null>(null);
+  const [resolutionTrends, setResolutionTrends] = useState<{ date: string; created: number; resolved: number }[]>([]);
   const [recentTickets, setRecentTickets] = useState<Ticket[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
   const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
+  const [aiPerformance, setAIPerformance] = useState<{
+    aiClassifiedTickets: number;
+    totalTickets: number;
+    aiAssistedResponses: number;
+    humanApprovalRate: number;
+    aiResponseAcceptanceRate: number;
+    avgConfidence: number;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function fetchDashboardData() {
+  // Callback declared before useEffect
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+
+      const days = dateRange.from && dateRange.to
+        ? Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24))
+        : 30;
 
       const [
         totalsData,
         categoriesData,
         prioritiesData,
+        sentimentsData,
         resolutionTimeData,
+        resolutionTrendsData,
         ticketsData,
         approvalsData,
         activityData,
+        aiPerformanceData,
       ] = await Promise.all([
         getDashboardTotals(),
         getCategoryDistribution(),
         getPriorityDistribution(),
+        getSentimentDistribution(),
         getAverageResolutionTime(),
+        getResolutionTrends(days),
         api.get<Ticket[]>("/tickets?limit=10&sort_by=created_at&sort_order=desc"),
         api.get<PendingApproval[]>("/tickets/pending-approvals"),
         api.get<Activity[]>("/activity/recent?limit=10"),
+        getAIPerformanceData(),
       ]);
 
       setTotals(totalsData);
       setCategories(categoriesData);
       setPriorities(prioritiesData);
+      setSentiments(sentimentsData);
       setAvgResolutionTime(resolutionTimeData.average_hours);
+      setResolutionTrends(resolutionTrendsData);
       setRecentTickets(ticketsData);
       setPendingApprovals(approvalsData);
       setRecentActivity(activityData);
+      setAIPerformance(aiPerformanceData);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load dashboard data");
+      toast({ title: "Error", description: "Failed to load dashboard data", variant: "danger" });
     } finally {
       setLoading(false);
     }
-  }
+  }, [dateRange]);
 
+  // Initial data fetch on mount
   useEffect(() => {
-    const loadData = async () => {
-      await fetchDashboardData();
-    };
-    loadData();
-  }, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  const handleDateRangeChange = (range: DateRange) => {
+    setDateRange(range);
+  };
+
+  // Re-fetch when date range changes
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchDashboardData();
+  }, [dateRange, fetchDashboardData]);
+
+  // Calculate volume chart data from resolution trends after data is fetched
+  const volumeChartData = resolutionTrends.length > 0
+    ? resolutionTrends.map((d) => ({
+        date: d.date,
+        total: d.created + d.resolved,
+        open: d.created,
+        resolved: d.resolved,
+      }))
+    : [
+        { date: "2024-01-15", total: totals.total, open: totals.open, resolved: totals.resolved }
+      ];
 
   const resolutionRate = totals.total > 0 ? (totals.resolved / totals.total) * 100 : 0;
-  const aiAssistedCount = 0; // Would need a new endpoint
-
-  // Use a fixed date for static generation to avoid new Date() during build
-  const chartData = useMemo(() => [
-    { date: "2024-01-15", total: totals.total, open: totals.open, resolved: totals.resolved },
-  ], [totals.total, totals.open, totals.resolved]);
 
   return (
     <DashboardLayout>
@@ -113,7 +174,8 @@ export default function DashboardPage() {
             <h1 className="text-2xl font-bold text-foreground">Overview</h1>
             <p className="text-muted-foreground mt-1">Real-time snapshot of your support operations</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-3">
+            <DateRangeFilter onChange={handleDateRangeChange} />
             <Button variant="outline" onClick={fetchDashboardData} disabled={loading}>
               Refresh
             </Button>
@@ -134,37 +196,45 @@ export default function DashboardPage() {
           totals={totals}
           avgResolutionTime={avgResolutionTime}
           resolutionRate={resolutionRate}
-          aiAssistedCount={aiAssistedCount}
+          aiAssistedCount={aiPerformance?.aiAssistedResponses ?? 0}
           totalTickets={totals.total}
           loading={loading}
         />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <TicketVolumeChart
-            data={chartData}
-            loading={loading}
-          />
+          <TicketVolumeChart data={volumeChartData} loading={loading} />
           <CategoryDistribution data={categories} loading={loading} />
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <PriorityDistribution data={priorities} loading={loading} />
-          <Card>
-            <CardHeader>
-              <CardTitle>Sentiment Distribution</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64 flex items-center justify-center text-muted-foreground">
-                Sentiment chart coming soon
-              </div>
-            </CardContent>
-          </Card>
+          <SentimentDistribution data={sentiments} loading={loading} />
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <ResolutionTrendsChart data={resolutionTrends} loading={loading} />
+          <AIPerformanceSummary data={aiPerformance} loading={loading} />
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <RecentTickets tickets={recentTickets} loading={loading} />
           <PendingApprovals approvals={pendingApprovals} loading={loading} />
-          <RecentActivity activities={recentActivity} loading={loading} />
+          {recentActivity.length === 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Activity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <EmptyState
+                  icon={<EmptyActivityIcon />}
+                  title="No recent activity"
+                  description="Activity will appear here as your team works on tickets"
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            <RecentActivity activities={recentActivity} loading={loading} />
+          )}
         </div>
       </div>
     </DashboardLayout>

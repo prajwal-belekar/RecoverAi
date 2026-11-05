@@ -1,107 +1,208 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
-import { AuthToken, getApiError, getApiUrl, storeToken } from "../../../lib/auth";
+import { FormEvent, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useToast } from "@/components/ui/Toast";
+import { authApi } from "@/lib/api";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
-  const [error, setError] = useState("");
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+  const redirect = searchParams.get("redirect") || "/dashboard";
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const validateEmail = (value: string) => {
+    if (!value) {
+      setEmailError("Email is required");
+      return false;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setEmailError("Please enter a valid email address");
+      return false;
+    }
+    setEmailError("");
+    return true;
+  };
+
+  const validatePassword = (value: string) => {
+    if (!value) {
+      setPasswordError("Password is required");
+      return false;
+    }
+    if (value.length < 8) {
+      setPasswordError("Password must be at least 8 characters");
+      return false;
+    }
+    setPasswordError("");
+    return true;
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError("");
+
+    const isEmailValid = validateEmail(email);
+    const isPasswordValid = validatePassword(password);
+
+    if (!isEmailValid || !isPasswordValid) {
+      return;
+    }
+
     setIsSubmitting(true);
 
-    const formData = new FormData(event.currentTarget);
     try {
-      const response = await fetch(getApiUrl("/auth/login"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: String(formData.get("email") ?? ""),
-          password: String(formData.get("password") ?? ""),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(await getApiError(response));
-      }
-
-      const token = (await response.json()) as AuthToken;
-      storeToken(token.access_token);
-      router.replace("/dashboard");
-    } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Login failed. Please try again.",
-      );
+      await authApi.login(email, password);
+      toast({ title: "Welcome back!", variant: "success" });
+      router.replace(redirect);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Login failed. Please try again.";
+      toast({ title: "Login failed", description: message, variant: "danger" });
     } finally {
       setIsSubmitting(false);
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen bg-background p-6 flex items-center justify-center">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-8">
-        <h2 className="text-2xl font-bold text-indigo-900 mb-6 text-center">
-          Log In
-        </h2>
-
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-1">
-              Email
-            </label>
-            <input
-              name="email"
-              type="email"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2.5 px-3 dark:bg-gray-700 dark:text-white"
-              placeholder="john@example.com"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-1">
-              Password
-            </label>
-            <input
-              name="password"
-              type="password"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2.5 px-3 dark:bg-gray-700 dark:text-white"
-              placeholder="••••••••"
-              required
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600"
-          >
-            {isSubmitting ? "Logging In..." : "Log In"}
-          </button>
-
-          {error && (
-            <p role="alert" className="text-center text-sm text-red-600">
-              {error}
-            </p>
-          )}
-
-          <p className="text-center text-sm text-zinc-500">
-            Don&apos;t have an account?{" "}
-            <a
-              href="/auth/register"
-              className="font-medium text-indigo-600 hover:text-indigo-500"
-            >
-              Sign up
-            </a>
-          </p>
-        </form>
+    <div className="w-full max-w-md">
+      {/* Logo */}
+      <div className="flex items-center justify-center gap-3 mb-8">
+        <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
+          <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+            <rect x="14" y="14" width="7" height="7" rx="1" />
+          </svg>
+        </div>
+        <span className="font-semibold text-xl text-foreground">ResolveAI</span>
       </div>
+
+      <div className="bg-card border border-card-border rounded-2xl p-8 shadow-xl">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>
+          <p className="mt-2 text-muted-foreground">Sign in to your account to continue</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+          <Input
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (emailError) validateEmail(e.target.value);
+            }}
+            onBlur={() => validateEmail(email)}
+            placeholder="john@example.com"
+            error={emailError || undefined}
+            autoComplete="email"
+            required
+            disabled={isSubmitting}
+          />
+
+          <div className="relative">
+            <Input
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (passwordError) validatePassword(e.target.value);
+              }}
+              onBlur={() => validatePassword(password)}
+              placeholder="••••••••"
+              error={passwordError || undefined}
+              autoComplete="current-password"
+              required
+              disabled={isSubmitting}
+              showToggle
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 rounded border-border bg-input text-primary focus:ring-primary focus:ring-offset-background"
+                disabled={isSubmitting}
+              />
+              <span className="text-sm text-muted-foreground">Remember me</span>
+            </label>
+            <Link
+              href="/auth/forgot-password"
+              className="text-sm font-medium text-primary hover:text-primary-hover transition-colors"
+            >
+              Forgot password?
+            </Link>
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full"
+            size="lg"
+            loading={isSubmitting}
+          >
+            Sign in
+          </Button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Don&apos;t have an account?{" "}
+          <Link href="/auth/register" className="font-medium text-primary hover:text-primary-hover transition-colors">
+            Create one
+          </Link>
+        </p>
+      </div>
+
+      <p className="mt-6 text-center text-xs text-muted-foreground">
+        By continuing, you agree to our{" "}
+        <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link>
+        {" "}and{" "}
+        <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
+      </p>
+    </div>
+  );
+}
+
+function LoginFormSkeleton() {
+  return (
+    <div className="w-full max-w-md">
+      <div className="flex items-center justify-center gap-3 mb-8">
+        <Skeleton className="h-10 w-10 rounded-xl" />
+        <Skeleton className="h-6 w-24" />
+      </div>
+      <div className="bg-card border border-card-border rounded-2xl p-8 shadow-xl">
+        <Skeleton className="h-6 w-3/4 mx-auto mb-2" />
+        <Skeleton className="h-4 w-1/2 mx-auto mb-8" />
+        <Skeleton className="h-10 w-full mb-5" />
+        <Skeleton className="h-10 w-full mb-5" />
+        <Skeleton className="h-10 w-full mb-5" />
+        <Skeleton className="h-10 w-full mb-5" />
+        <Skeleton className="h-12 w-full mb-6" />
+        <Skeleton className="h-4 w-1/2 mx-auto" />
+      </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+      <Suspense fallback={<LoginFormSkeleton />}>
+        <LoginForm />
+      </Suspense>
     </div>
   );
 }

@@ -2,136 +2,235 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getApiError, getApiUrl, storeToken, AuthToken } from "../../../lib/auth";
+import Link from "next/link";
+import { useToast } from "@/components/ui/Toast";
+import { authApi } from "@/lib/api";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [error, setError] = useState("");
+  const { toast } = useToast();
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const validateName = (value: string) => {
+    if (!value.trim()) {
+      setNameError("Name is required");
+      return false;
+    }
+    if (value.trim().length < 2) {
+      setNameError("Name must be at least 2 characters");
+      return false;
+    }
+    setNameError("");
+    return true;
+  };
+
+  const validateEmail = (value: string) => {
+    if (!value) {
+      setEmailError("Email is required");
+      return false;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setEmailError("Please enter a valid email address");
+      return false;
+    }
+    setEmailError("");
+    return true;
+  };
+
+  const validatePassword = (value: string) => {
+    if (!value) {
+      setPasswordError("Password is required");
+      return false;
+    }
+    if (value.length < 8) {
+      setPasswordError("Password must be at least 8 characters");
+      return false;
+    }
+    if (!/[A-Z]/.test(value)) {
+      setPasswordError("Password must contain at least one uppercase letter");
+      return false;
+    }
+    if (!/[a-z]/.test(value)) {
+      setPasswordError("Password must contain at least one lowercase letter");
+      return false;
+    }
+    if (!/[0-9]/.test(value)) {
+      setPasswordError("Password must contain at least one number");
+      return false;
+    }
+    setPasswordError("");
+    return true;
+  };
+
+  const validateConfirmPassword = (value: string) => {
+    if (!value) {
+      setConfirmPasswordError("Please confirm your password");
+      return false;
+    }
+    if (value !== password) {
+      setConfirmPasswordError("Passwords do not match");
+      return false;
+    }
+    setConfirmPasswordError("");
+    return true;
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError("");
+
+    const isNameValid = validateName(name);
+    const isEmailValid = validateEmail(email);
+    const isPasswordValid = validatePassword(password);
+    const isConfirmValid = validateConfirmPassword(confirmPassword);
+
+    if (!isNameValid || !isEmailValid || !isPasswordValid || !isConfirmValid) {
+      return;
+    }
+
     setIsSubmitting(true);
 
-    const formData = new FormData(event.currentTarget);
-    const credentials = {
-      name: String(formData.get("name") ?? ""),
-      email: String(formData.get("email") ?? ""),
-      password: String(formData.get("password") ?? ""),
-    };
-
     try {
-      const registerResponse = await fetch(getApiUrl("/auth/register"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credentials),
-      });
-
-      if (!registerResponse.ok) {
-        throw new Error(await getApiError(registerResponse));
-      }
-
-      const loginResponse = await fetch(getApiUrl("/auth/login"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: credentials.email,
-          password: credentials.password,
-        }),
-      });
-
-      if (!loginResponse.ok) {
-        throw new Error(
-          `Account created, but automatic login failed: ${await getApiError(loginResponse)}`,
-        );
-      }
-
-      const token = (await loginResponse.json()) as AuthToken;
-      storeToken(token.access_token);
+      await authApi.register(name.trim(), email, password);
+      toast({ title: "Account created!", description: "Welcome to ResolveAI", variant: "success" });
       router.replace("/dashboard");
-    } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Registration failed. Please try again.",
-      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Registration failed. Please try again.";
+      toast({ title: "Registration failed", description: message, variant: "danger" });
     } finally {
       setIsSubmitting(false);
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen bg-background p-6 flex items-center justify-center">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-8">
-        <h2 className="text-2xl font-bold text-indigo-900 mb-6 text-center">
-          Create Account
-        </h2>
+    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
+            <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+            </svg>
+          </div>
+          <span className="font-semibold text-xl text-foreground">ResolveAI</span>
+        </div>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-1">
-              Name
-            </label>
-            <input
-              name="name"
+        <div className="bg-card border border-card-border rounded-2xl p-8 shadow-xl">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold text-foreground">Create your account</h1>
+            <p className="mt-2 text-muted-foreground">Start resolving customer issues with AI</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+            <Input
+              label="Full Name"
               type="text"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2.5 px-3 dark:bg-gray-700 dark:text-white"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (nameError) validateName(e.target.value);
+              }}
+              onBlur={() => validateName(name)}
               placeholder="John Doe"
+              error={nameError || undefined}
+              autoComplete="name"
               required
+              disabled={isSubmitting}
             />
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-1">
-              Email
-            </label>
-            <input
-              name="email"
+            <Input
+              label="Email"
               type="email"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2.5 px-3 dark:bg-gray-700 dark:text-white"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (emailError) validateEmail(e.target.value);
+              }}
+              onBlur={() => validateEmail(email)}
               placeholder="john@example.com"
+              error={emailError || undefined}
+              autoComplete="email"
               required
+              disabled={isSubmitting}
             />
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-1">
-              Password
-            </label>
-            <input
-              name="password"
-              type="password"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2.5 px-3 dark:bg-gray-700 dark:text-white"
-              placeholder="••••••••"
-              required
-            />
-          </div>
+            <div className="relative">
+              <Input
+                label="Password"
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (passwordError) validatePassword(e.target.value);
+                  if (confirmPasswordError) validateConfirmPassword(confirmPassword);
+                }}
+                onBlur={() => validatePassword(password)}
+                placeholder="••••••••"
+                error={passwordError || undefined}
+                autoComplete="new-password"
+                required
+                disabled={isSubmitting}
+                showToggle
+                helperText="At least 8 characters with uppercase, lowercase, and number"
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600"
-          >
-            {isSubmitting ? "Creating Account..." : "Create Account"}
-          </button>
+            <div className="relative">
+              <Input
+                label="Confirm Password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  if (confirmPasswordError) validateConfirmPassword(e.target.value);
+                }}
+                onBlur={() => validateConfirmPassword(confirmPassword)}
+                placeholder="••••••••"
+                error={confirmPasswordError || undefined}
+                autoComplete="new-password"
+                required
+                disabled={isSubmitting}
+                showToggle
+              />
+            </div>
 
-          {error && (
-            <p role="alert" className="text-center text-sm text-red-600">
-              {error}
-            </p>
-          )}
-
-          <p className="text-center text-sm text-zinc-500">
-            Already have an account?{" "}
-            <a
-              href="/auth/login"
-              className="font-medium text-indigo-600 hover:text-indigo-500"
+            <Button
+              type="submit"
+              className="w-full"
+              size="lg"
+              loading={isSubmitting}
             >
-              Log in
-            </a>
+              Create account
+            </Button>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <Link href="/auth/login" className="font-medium text-primary hover:text-primary-hover transition-colors">
+              Sign in
+            </Link>
           </p>
-        </form>
+        </div>
+
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          By continuing, you agree to our{" "}
+          <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link>
+          {" "}and{" "}
+          <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
+        </p>
       </div>
     </div>
   );

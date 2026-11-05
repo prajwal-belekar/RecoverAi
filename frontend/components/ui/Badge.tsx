@@ -10,10 +10,10 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
   ({ className, variant = "default", ...props }, ref) => {
     const variants = {
-      default: "bg-primary text-primary-foreground hover:bg-primary/80",
-      secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+      default: "bg-primary text-white hover:bg-primary-hover",
+      secondary: "bg-secondary text-foreground hover:bg-secondary-hover",
       success: "bg-success text-white hover:bg-success/90",
-      warning: "bg-warning text-white hover:bg-warning/90",
+      warning: "bg-warning text-black hover:bg-warning/90",
       danger: "bg-danger text-white hover:bg-danger/90",
       outline: "text-foreground border border-border",
     };
