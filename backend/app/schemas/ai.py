@@ -1,15 +1,47 @@
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, Field
+from typing import Optional, List
 
 class TicketClassification(BaseModel):
-    category: str  # e.g., "billing", "technical", "account", "general"
-    urgency: str   # "low", "medium", "high", "critical"
-    sentiment: str  # "positive", "negative", "neutral"
-    department: str  # e.g., "billing", "technical support", "sales"
+    category: str
+    urgency: str
+    sentiment: str
+    department: str
     suggested_action: str
-    confidence: float  # 0.0 to 1.0
+    confidence: float
 
 class TicketPriority(BaseModel):
-    priority_level: str  # e.g., "Low", "Medium", "High", "Critical"
-    score: float  # Numerical score 0-100
-    rationale: str  # Human-readable explanation of priority assignment
+    priority_level: str
+    score: float
+    rationale: str
+
+
+class Citation(BaseModel):
+    doc_id: int
+    doc_title: str
+    chunk_id: int
+    chunk_index: int
+    content: str
+    similarity: float
+
+
+class SuggestedResponse(BaseModel):
+    response: str
+    confidence: float
+    citations: List[Citation] = []
+    requires_approval: bool = True
+    has_sufficient_context: bool = True
+    response_id: Optional[int] = None
+
+
+class ResponseApproval(BaseModel):
+    approved: bool
+    agent_comments: Optional[str] = None
+
+
+class ResponseEdit(BaseModel):
+    edited_response: str
+
+
+class ResponseAction(BaseModel):
+    action: str
+    agent_comments: Optional[str] = None

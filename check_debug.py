@@ -1,0 +1,12 @@
+import sqlite3
+conn = sqlite3.connect('test_debug.db')
+c = conn.cursor()
+c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+print("Tables:", c.fetchall())
+c.execute("PRAGMA table_info(users)")
+print("users columns:", c.fetchall())
+c.execute("PRAGMA table_info(workspaces)")
+print("workspaces columns:", c.fetchall())
+c.execute("PRAGMA table_info(knowledge_base)")
+print("knowledge_base columns:", c.fetchall())
+conn.close()

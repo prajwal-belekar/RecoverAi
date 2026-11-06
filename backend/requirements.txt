@@ -13,3 +13,6 @@ openai
 numpy
 pytest
 httpx
+PyPDF2
+python-docx
+slowapi

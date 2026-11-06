@@ -6,6 +6,40 @@ from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from .database import Base
 
+class KnowledgeChunk(Base):
+    __tablename__ = "knowledge_chunks"
+    id = Column(Integer, primary_key=True, index=True)
+    knowledge_base_id = Column(Integer, ForeignKey("knowledge_base.id", ondelete="CASCADE"), nullable=False, index=True)
+    chunk_index = Column(Integer, nullable=False)
+    content = Column(Text, nullable=False)
+    embedding = Column(JSON, nullable=False)
+    token_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    knowledge_base = relationship("KnowledgeBase", back_populates="chunks")
+
+class AIResponse(Base):
+    __tablename__ = "ai_responses"
+    id = Column(Integer, primary_key=True, index=True)
+    ticket_id = Column(Integer, ForeignKey("tickets.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    generated_response = Column(Text, nullable=False)
+    edited_response = Column(Text, nullable=True)
+    final_response = Column(Text, nullable=True)
+    status = Column(String(20), default="generated", nullable=False, index=True)
+    citations = Column(JSON, nullable=True)
+    confidence = Column(Float, nullable=True)
+    has_sufficient_context = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    approved_at = Column(DateTime, nullable=True)
+    approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    sent_at = Column(DateTime, nullable=True)
+
+    ticket = relationship("Ticket", back_populates="ai_responses")
+    user = relationship("User", foreign_keys=[user_id])
+    approver = relationship("User", foreign_keys=[approved_by])
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
@@ -53,6 +87,7 @@ class Ticket(Base):
     workspace = relationship("Workspace", back_populates="tickets")
     classifications = relationship("AIClassification", back_populates="ticket", cascade="all, delete-orphan")
     priorities = relationship("AIPriority", back_populates="ticket", cascade="all, delete-orphan")
+    ai_responses = relationship("AIResponse", back_populates="ticket", cascade="all, delete-orphan")
 
 class AIClassification(Base):
     __tablename__ = "ai_classifications"
@@ -92,6 +127,7 @@ class KnowledgeBase(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     workspace = relationship("Workspace", back_populates="knowledge_base")
+    chunks = relationship("KnowledgeChunk", back_populates="knowledge_base", cascade="all, delete-orphan")
 
 class TicketUpdate(Base):
     __tablename__ = "ticket_updates"
